@@ -93,12 +93,11 @@ def test_get_user(client):
 
 def test_get_user_nonexistent(client):
     response = client.get('/users/0')
-    
+
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {
         'detail': 'User not found',
     }
-
 
 
 def test_delete_user(client):
