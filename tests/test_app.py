@@ -61,24 +61,21 @@ def test_create_user_with_existing_username(client, user):
     assert response.json() == {'detail': 'username already exist'}
 
 
-def test_read_users(client):
-    response = client.get('/users/')
-
-    assert response.status_code == HTTPStatus.OK
-    assert response.json() == {'users': []}
-
-
-def test_read_users_with_user(client, user):
+def test_read_users_with_user(client, user, token):
     user_schema = UserPublic.model_validate(user).model_dump()
-    response = client.get('/users/')
+    response = client.get(
+        '/users/',
+        headers={'Authorization': f'Bearer {token}'},
+    )
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'users': [user_schema]}
 
 
-def test_update_user(client, user):
+def test_update_user(client, user, token):
     response = client.put(
         '/users/1',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'bob',
             'email': 'bob@example.com',
@@ -93,7 +90,7 @@ def test_update_user(client, user):
     }
 
 
-def test_update_user_nonexistent(client):
+def test_update_user_no_token(client):
     response = client.put(
         '/users/2',
         json={
@@ -103,32 +100,49 @@ def test_update_user_nonexistent(client):
         },
     )
 
-    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {
-        'detail': 'User not found',
+        'detail': 'Not authenticated',
     }
 
 
-def test_get_user(client, user):
+def test_update_user_unauthorized(client, user, token):
+    response = client.put(
+        '/users/2',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'username': 'new username',
+            'password': 'new password',
+            'email': 'newemail@tester.com',
+        },
+    )
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {'detail': 'Not enough permision'}
+
+
+def test_get_user(client, user, token):
     user_schema = UserPublic.model_validate(user).model_dump()
-    response = client.get('/users/1')
+    response = client.get(
+        '/users/1',
+        headers={'Authorization': f'Bearer {token}'},
+    )
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == user_schema
 
 
-def test_get_user_nonexistent(client, user):
-    response = client.get('/users/0')
-
+def test_get_user_inexistent(client, user):
+    response = client.get(
+        '/users/2',
+    )
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {
-        'detail': 'User not found',
-    }
+    assert response.json() == {'detail': 'User not found'}
 
 
-def test_delete_user(client, user):
+def test_delete_user(client, user, token):
     response = client.delete(
         '/users/1',
+        headers={'Authorization': f'Bearer {token}'},
     )
 
     assert response.status_code == HTTPStatus.OK
@@ -137,12 +151,43 @@ def test_delete_user(client, user):
     }
 
 
-def test_delete_user_nonexistent(client):
+def test_delete_user_no_token(client):
     response = client.delete(
         '/users/1',
     )
 
-    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {
-        'detail': 'User not found',
+        'detail': 'Not authenticated',
     }
+
+
+def test_delete_user_unauthorized(client, user, token):
+    response = client.delete(
+        '/users/2', headers={'Authorization': f'Bearer {token}'}
+    )
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {'detail': 'Not enough permision'}
+
+
+def test_get_token(client, user):
+    response = client.post(
+        '/token',
+        data={'username': user.email, 'password': user.clean_password},
+    )
+
+    token = response.json()
+
+    assert response.status_code == HTTPStatus.OK
+    assert token['token_type'] == 'Bearer'
+    assert token['access_token']
+
+
+def test_get_token_user_inexistent(client, user):
+    response = client.post(
+        '/token',
+        data={'username': 'wrong@email.com', 'password': user.clean_password},
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {'detail': 'email or password is incorrect'}

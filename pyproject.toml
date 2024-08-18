@@ -11,6 +11,9 @@ fastapi = "^0.111.0"
 sqlalchemy = "^2.0.31"
 pydantic-settings = "^2.3.4"
 alembic = "^1.13.2"
+pyjwt = "^2.8.0"
+pwdlib = {extras = ["argon2"], version = "^0.2.0"}
+python-multipart = "^0.0.9"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -38,7 +41,7 @@ quote-style = 'single'
 [tool.taskipy.tasks]
 run = 'fastapi dev fast_zero/app.py'
 pre_test = 'task lint'
-test = 'pytest -s -x --cov=fast_zero -vv'
+test = 'pytest -s --cov=fast_zero -vv'
 post_test = 'coverage html'
 lint = 'ruff check . && ruff check . --diff'
 format = 'ruff check . --fix && ruff format .'
