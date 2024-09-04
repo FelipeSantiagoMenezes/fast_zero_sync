@@ -18,4 +18,4 @@ def read_root():
 
 @app.get('/hello/', status_code=HTTPStatus.OK, response_class=HTMLResponse)
 def read_hello():
-    return 'Olá mundo!'
+    return '<h1>Olá mundo!<h1>'
